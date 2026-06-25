@@ -1,0 +1,15 @@
+kite_config.json
+.claude/
+.env
+/briefs/
+logs/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+brief_data.json
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
