@@ -18,6 +18,7 @@ External access needed (all free, no API keys):
 import yfinance as yf
 import requests
 import json
+import os
 import time
 import re
 from datetime import datetime, date, timedelta
@@ -25,6 +26,29 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import warnings
 warnings.filterwarnings('ignore')
+
+
+def _load_dotenv(path: str = ".env") -> None:
+    """Minimal .env loader (no external dep). Existing env vars win."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidate = path if os.path.isabs(path) else os.path.join(here, path)
+    if not os.path.exists(candidate):
+        return
+    try:
+        with open(candidate) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                key, val = key.strip(), val.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+    except Exception:
+        pass
+
+
+_load_dotenv()
 
 # Optional: Kite Connect and news pipeline (fail gracefully if unavailable)
 try:
@@ -86,6 +110,21 @@ THEMATIC_BASKETS = {
     ],
 }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# EARNINGS CALENDAR FALLBACK (editable)
+# Used when NSE/BSE live board-meeting data is unavailable (e.g. NSE 403).
+# Hand-edit these each week. `date` is display text; `expected_eps` optional.
+# ─────────────────────────────────────────────────────────────────────────────
+
+EARNINGS_CALENDAR_FALLBACK = [
+    {"company": "Tata Consultancy Services", "symbol": "TCS",       "exchange": "NSE", "date": "Jul 10, 2026", "expected_eps": "₹34.2", "purpose": "Q1 FY27 Results"},
+    {"company": "HDFC Bank",                 "symbol": "HDFCBANK",  "exchange": "NSE", "date": "Jul 15, 2026", "expected_eps": "₹22.8", "purpose": "Q1 FY27 Results"},
+    {"company": "Infosys",                   "symbol": "INFY",      "exchange": "NSE", "date": "Jul 16, 2026", "expected_eps": "₹16.5", "purpose": "Q1 FY27 Results"},
+    {"company": "Reliance Industries",       "symbol": "RELIANCE",  "exchange": "NSE", "date": "Jul 18, 2026", "expected_eps": "₹26.1", "purpose": "Q1 FY27 Results"},
+    {"company": "ICICI Bank",                "symbol": "ICICIBANK", "exchange": "NSE", "date": "Jul 20, 2026", "expected_eps": "₹18.4", "purpose": "Q1 FY27 Results"},
+]
+
+
 # ─────────────────────────────────────────────
 # SECTION 1 — INDICES & SECTORS (yfinance)
 # ─────────────────────────────────────────────
@@ -122,9 +161,11 @@ BOND_TICKERS = {
 
 GLOBAL_TICKERS = {
     "S&P 500":    "^GSPC",
+    "Nasdaq":     "^IXIC",     # Nasdaq Composite (Phase 2 global table)
     "Nasdaq 100": "^NDX",
     "Dow Jones":  "^DJI",
     "Nikkei 225": "^N225",
+    "DAX":        "^GDAXI",
     "FTSE 100":   "^FTSE",
     "Shanghai":   "000001.SS",
     "Hang Seng":  "^HSI",
@@ -224,7 +265,7 @@ def fetch_bse_corporate_announcements() -> list:
         return []
 
 
-def fetch_yfinance_batch(tickers_dict: dict, period: str = "2d") -> dict:
+def fetch_yfinance_batch(tickers_dict: dict, period: str = "5d") -> dict:
     """
     Fetch a batch of tickers using yfinance.
     Returns dict of {name: {last_price, prev_close, change_pct, high, low}}
@@ -290,6 +331,45 @@ def fetch_yfinance_batch(tickers_dict: dict, period: str = "2d") -> dict:
             results[name] = None
 
     return results
+
+
+def fetch_yf_intraday(symbol: str = "^NSEI", interval: str = "5m") -> dict:
+    """
+    Intraday OHLC for Today's Price Action via yfinance — fallback when Kite
+    is unavailable. Tries today (1d); if the market is closed/empty, falls back
+    to the most recent trading day in a 5d window.
+    Returns {"candles": [{t, o, h, l, c}, ...], "source": "yfinance"} or None.
+    """
+    for period in ("1d", "5d"):
+        try:
+            df = yf.download(symbol, period=period, interval=interval,
+                             auto_adjust=True, progress=False, threads=False)
+            if df is None or df.empty:
+                continue
+            # Flatten possible MultiIndex columns (single-ticker download)
+            if hasattr(df.columns, "get_level_values"):
+                df.columns = df.columns.get_level_values(0)
+            df = df.dropna(subset=["Close"])
+            if df.empty:
+                continue
+            # Keep only the most recent trading day's candles
+            last_day = df.index[-1].date()
+            df = df[df.index.map(lambda x: x.date() == last_day)]
+            candles = []
+            for ts, row in df.iterrows():
+                candles.append({
+                    "t": ts.strftime("%H:%M"),
+                    "o": round(float(row["Open"]), 2),
+                    "h": round(float(row["High"]), 2),
+                    "l": round(float(row["Low"]), 2),
+                    "c": round(float(row["Close"]), 2),
+                })
+            if candles:
+                return {"symbol": symbol, "interval": interval,
+                        "candles": candles, "source": "yfinance"}
+        except Exception as e:
+            print(f"  [yf intraday {period}] {e}")
+    return None
 
 
 def compute_pivot_points(high: float, low: float, close: float) -> dict:
@@ -733,7 +813,7 @@ def fetch_thematic_performance(baskets: dict) -> dict:
         try:
             raw = yf.download(
                 tickers,
-                period="2d",
+                period="5d",
                 interval="1d",
                 auto_adjust=True,
                 progress=False,
@@ -835,6 +915,49 @@ def fetch_earnings_calendar(session: requests.Session) -> list:
 
 
 # ─────────────────────────────────────────────
+# UNUSUAL VOLUME (Phase 3) — flags HIGH VOL stocks
+# ─────────────────────────────────────────────
+
+def enrich_unusual_volume(movers: dict, symbols: list) -> None:
+    """
+    For each gainer/loser, attach today's volume and 20-day average volume
+    (via yfinance) in-place. brief_generator flags HIGH VOL when ratio >= 2.5x.
+    Best-effort: any failure leaves the fields absent and is silently skipped.
+    """
+    yf_syms = [f"{s}.NS" for s in symbols]
+    try:
+        raw = yf.download(yf_syms, period="1mo", interval="1d",
+                          group_by="ticker", auto_adjust=True, progress=False, threads=True)
+    except Exception as e:
+        print(f"  [Unusual volume] download error: {e}")
+        return
+
+    def _vol_for(sym):
+        ys = f"{sym}.NS"
+        try:
+            df = raw[ys] if len(yf_syms) > 1 else raw
+            vol = df["Volume"].dropna()
+            if len(vol) < 2:
+                return None, None
+            today_vol = float(vol.iloc[-1])
+            avg20 = float(vol.iloc[-21:-1].mean()) if len(vol) >= 21 else float(vol.iloc[:-1].mean())
+            return today_vol, avg20
+        except Exception:
+            return None, None
+
+    flagged = 0
+    for g in (movers.get("gainers", []) + movers.get("losers", [])):
+        v, av = _vol_for(g.get("symbol", ""))
+        if v is not None:
+            g["volume"] = v
+            g["avg_volume_20d"] = av
+            if av and av > 0 and v / av >= 2.5:
+                flagged += 1
+    if flagged:
+        print(f"  [Unusual volume] {flagged} stock(s) flagged HIGH VOL")
+
+
+# ─────────────────────────────────────────────
 # MAIN ORCHESTRATOR
 # ─────────────────────────────────────────────
 
@@ -874,6 +997,7 @@ def run_full_pipeline() -> dict:
         "earnings_calendar": [],
         "thematic_baskets": {},
         "option_chain":     None,        # Kite option chain summary (None if unavailable)
+        "intraday":         None,        # Kite intraday OHLC for Nifty 50 (Today's Price Action)
         "zerodha_amr":      {},
         "pulse_headlines":  [],
         "raw_news":         [],          # all scored news items from news_fetcher
@@ -990,6 +1114,9 @@ def run_full_pipeline() -> dict:
             kw in c.get("purpose", "").upper()
             for kw in ["RESULT", "QUARTERLY", "FINANCIAL"]
         )]
+    if not earnings:
+        print("  [Earnings] No live data — using editable hardcoded fallback.")
+        earnings = EARNINGS_CALENDAR_FALLBACK
     output["earnings_calendar"] = earnings
 
     # ── Step 10: Thematic baskets ────────────────────────────────────────────
@@ -1015,6 +1142,27 @@ def run_full_pipeline() -> dict:
             print("  [Kite OC] Could not fetch option chain")
     else:
         print("[13/14] Skipping option chain (Kite not available)")
+
+    # ── Step 13b: Intraday OHLC (Today's Price Action) ──────────────────────
+    print("[13b/14] Fetching Nifty 50 intraday OHLC...")
+    intraday = None
+    if kite:
+        intraday = _kc.fetch_kite_intraday(kite, "NSE:NIFTY 50", "5minute")
+        if intraday and intraday.get("candles"):
+            print(f"  [Kite intraday] {len(intraday['candles'])} candles")
+    if not (intraday and intraday.get("candles")):
+        print("  [Intraday] Kite unavailable — falling back to yfinance (^NSEI 5m)...")
+        intraday = fetch_yf_intraday("^NSEI", "5m")
+        if intraday and intraday.get("candles"):
+            print(f"  [yf intraday] {len(intraday['candles'])} candles")
+    output["intraday"] = intraday
+
+    # ── Step 13c: Unusual-volume enrichment for gainers/losers ──────────────
+    movers = output.get("gainers_losers") or {}
+    mover_syms = [g.get("symbol") for g in (movers.get("gainers", []) + movers.get("losers", [])) if g.get("symbol")]
+    if mover_syms:
+        print("[13c/14] Checking unusual volume (yfinance 20-day avg)...")
+        enrich_unusual_volume(movers, mover_syms)
 
     # ── Step 14: Multi-source news pipeline ─────────────────────────────────
     if _NEWS_MODULE_OK:

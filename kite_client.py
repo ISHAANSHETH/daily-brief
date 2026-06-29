@@ -405,3 +405,42 @@ def fetch_kite_option_chain_summary(kite, index: str = "NIFTY") -> Optional[dict
     except Exception as e:
         print(f"  [Kite option chain] {e}")
         return None
+
+
+# ─────────────────────────────────────────────
+# INTRADAY OHLC (Today's Price Action) — Phase 2
+# ─────────────────────────────────────────────
+
+def fetch_kite_intraday(kite, symbol: str = "NSE:NIFTY 50", interval: str = "5minute") -> Optional[dict]:
+    """
+    Fetch today's intraday OHLC for an index via Kite historical_data.
+    Returns {"candles": [{t, o, h, l, c}, ...]} or None.
+    Requires the historical-data subscription on the Kite app.
+    """
+    try:
+        q = kite.quote([symbol])
+        token = (q.get(symbol) or {}).get("instrument_token")
+        if not token:
+            print(f"  [Kite intraday] no instrument_token for {symbol}")
+            return None
+
+        today = datetime.now()
+        start = today.replace(hour=9, minute=15, second=0, microsecond=0)
+        candles_raw = kite.historical_data(token, start, today, interval)
+        if not candles_raw:
+            return None
+
+        candles = []
+        for c in candles_raw:
+            ts = c.get("date")
+            candles.append({
+                "t": ts.strftime("%H:%M") if hasattr(ts, "strftime") else str(ts),
+                "o": round(float(c.get("open", 0)), 2),
+                "h": round(float(c.get("high", 0)), 2),
+                "l": round(float(c.get("low", 0)), 2),
+                "c": round(float(c.get("close", 0)), 2),
+            })
+        return {"symbol": symbol, "interval": interval, "candles": candles}
+    except Exception as e:
+        print(f"  [Kite intraday] {e}")
+        return None

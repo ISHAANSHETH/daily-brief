@@ -1,0 +1,28 @@
+[
+  {
+    "date": "2026-06-25",
+    "sectors": {
+      "Auto": 2.25,
+      "Bank": 0.05,
+      "FMCG": 0.68,
+      "IT": -0.86,
+      "Metal": -1.37,
+      "Pharma": -0.2,
+      "Realty": 0.33,
+      "Energy": -0.68
+    }
+  },
+  {
+    "date": "2026-06-29",
+    "sectors": {
+      "Auto": -2.08,
+      "Bank": -0.77,
+      "FMCG": -0.59,
+      "IT": -1.07,
+      "Metal": 0.8,
+      "Pharma": 1.03,
+      "Realty": -0.9,
+      "Energy": 0.2
+    }
+  }
+]
