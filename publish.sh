@@ -129,4 +129,10 @@ git push origin main
 
 echo ""
 echo "✅ Published!"
-echo "   View at: https://$(git remote get-url origin 2>/dev/null | sed 's/.*github.com[:/]\(.*\)\.git/\1/' | sed 's|.*github.com/||').github.io/$(basename "$SCRIPT_DIR")/"
+# Derive owner/repo from the remote → owner.github.io/repo (lowercased; Pages is case-insensitive).
+REPO_PATH="$(git remote get-url origin 2>/dev/null | sed -E 's#.*github.com[:/]([^/]+)/([^/.]+)(\.git)?#\1 \2#')"
+OWNER="$(echo "$REPO_PATH" | awk '{print tolower($1)}')"
+REPO="$(echo "$REPO_PATH" | awk '{print $2}')"
+echo "   Brief:    https://${OWNER}.github.io/${REPO}/briefs/brief_${TODAY}.html"
+echo "   Bulletin: https://${OWNER}.github.io/${REPO}/briefs/bulletin_${TODAY}.html"
+echo "   Home:     https://${OWNER}.github.io/${REPO}/"

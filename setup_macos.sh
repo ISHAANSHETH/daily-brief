@@ -1,27 +1,52 @@
 #!/bin/bash
-# setup_macos.sh — Install Undeployed Capital Daily Brief as a macOS LaunchAgent
-# Runs Mon-Fri at 4:30 PM IST (11:00 UTC)
+# setup_macos.sh — Install Undeployed Capital as a macOS LaunchAgent
+#
+# Runs the FULL pipeline daily Mon–Fri:
+#   data_fetcher → brief_generator → bulletin_generator → publish to GitHub Pages
+# (this is exactly `publish.sh`).
+#
+# Schedule time is LOCAL (the Mac's timezone). Default 16:45 — ~75 min after the
+# NSE close (15:30 IST) so the brief reflects the day's close. Edit RUN_HOUR /
+# RUN_MIN below if your Mac isn't on IST.
+#
+# Secrets: the API key is read from .env at runtime (auto-loaded by the
+# generators) — it is NOT stored in the plist. Make sure .env exists with
+# ANTHROPIC_API_KEY=... before the job runs.
+#
+# Daily Kite step (manual, ~30s): run `python3 kite_login.py` each market
+# morning so the scheduled run gets full option-chain / MCX / intraday data.
+# Without it the run still publishes via yfinance fallback.
 
 set -e
 
+RUN_HOUR=16        # local hour (24h)
+RUN_MIN=45
+
 WORKING_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLIST_PATH="$HOME/Library/LaunchAgents/com.undeployedcapital.brief.plist"
-PYTHON="$(which python3)"
 LOG_DIR="$WORKING_DIR/logs"
+BASH_BIN="$(command -v bash)"
 
 mkdir -p "$LOG_DIR"
 
-if [ -z "$ANTHROPIC_API_KEY" ]; then
-    echo "ERROR: ANTHROPIC_API_KEY is not set in the current environment."
-    echo "  Run: export ANTHROPIC_API_KEY=sk-ant-..."
-    echo "  Then re-run this script."
-    exit 1
+if [ ! -f "$WORKING_DIR/.env" ]; then
+    echo "WARNING: $WORKING_DIR/.env not found."
+    echo "  The scheduled run needs ANTHROPIC_API_KEY in .env for the AI sections."
+    echo "  Create it:  cp .env.example .env  then add your key."
 fi
 
-echo "Installing LaunchAgent to $PLIST_PATH"
-echo "  Working directory: $WORKING_DIR"
-echo "  Python:            $PYTHON"
-echo "  Schedule:          Mon-Fri 11:00 UTC (4:30 PM IST)"
+echo "Installing LaunchAgent → $PLIST_PATH"
+echo "  Command:   bash publish.sh   (fetch → brief → bulletin → publish)"
+echo "  Schedule:  Mon–Fri ${RUN_HOUR}:$(printf '%02d' $RUN_MIN) LOCAL time"
+echo "  Dir:       $WORKING_DIR"
+
+# Five StartCalendarInterval entries (one per weekday) — a single dict with a
+# lone Weekday key would only fire on that one day.
+intervals=""
+for wd in 1 2 3 4 5; do
+  intervals="${intervals}        <dict><key>Hour</key><integer>${RUN_HOUR}</integer><key>Minute</key><integer>${RUN_MIN}</integer><key>Weekday</key><integer>${wd}</integer></dict>
+"
+done
 
 cat > "$PLIST_PATH" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -32,93 +57,40 @@ cat > "$PLIST_PATH" <<PLIST
     <string>com.undeployedcapital.brief</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$PYTHON</string>
-        <string>$WORKING_DIR/run_daily.py</string>
+        <string>${BASH_BIN}</string>
+        <string>${WORKING_DIR}/publish.sh</string>
     </array>
     <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>11</integer>
-        <key>Minute</key>
-        <integer>0</integer>
-        <key>Weekday</key>
-        <integer>1</integer>
-    </dict>
+    <array>
+${intervals}    </array>
     <key>EnvironmentVariables</key>
     <dict>
-        <key>ANTHROPIC_API_KEY</key>
-        <string>$ANTHROPIC_API_KEY</string>
         <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
     <key>WorkingDirectory</key>
-    <string>$WORKING_DIR</string>
+    <string>${WORKING_DIR}</string>
     <key>StandardOutPath</key>
-    <string>$LOG_DIR/launchd.log</string>
+    <string>${LOG_DIR}/launchd.log</string>
     <key>StandardErrorPath</key>
-    <string>$LOG_DIR/launchd_err.log</string>
+    <string>${LOG_DIR}/launchd_err.log</string>
     <key>RunAtLoad</key>
     <false/>
 </dict>
 </plist>
 PLIST
 
-# StartCalendarInterval with a single Weekday key only fires on that day.
-# To run Mon-Fri we need 5 separate interval dicts. Rewrite:
-cat > "$PLIST_PATH" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.undeployedcapital.brief</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>$PYTHON</string>
-        <string>$WORKING_DIR/run_daily.py</string>
-    </array>
-    <key>StartCalendarInterval</key>
-    <array>
-        <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>0</integer><key>Weekday</key><integer>1</integer></dict>
-        <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>0</integer><key>Weekday</key><integer>2</integer></dict>
-        <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>0</integer><key>Weekday</key><integer>3</integer></dict>
-        <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>0</integer><key>Weekday</key><integer>4</integer></dict>
-        <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>0</integer><key>Weekday</key><integer>5</integer></dict>
-    </array>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>ANTHROPIC_API_KEY</key>
-        <string>$ANTHROPIC_API_KEY</string>
-        <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
-    </dict>
-    <key>WorkingDirectory</key>
-    <string>$WORKING_DIR</string>
-    <key>StandardOutPath</key>
-    <string>$LOG_DIR/launchd.log</string>
-    <key>StandardErrorPath</key>
-    <string>$LOG_DIR/launchd_err.log</string>
-    <key>RunAtLoad</key>
-    <false/>
-</dict>
-</plist>
-PLIST
-
-# Unload existing job if present (ignore errors)
 launchctl unload "$PLIST_PATH" 2>/dev/null || true
-
-# Load the new job
 launchctl load "$PLIST_PATH"
 
 echo ""
 echo "LaunchAgent installed and loaded."
-echo ""
-launchctl list | grep undeployedcapital && echo "Status: LOADED ✓" || echo "Status check: run 'launchctl list | grep undeployedcapital'"
+launchctl list | grep undeployedcapital && echo "Status: LOADED ✓" || echo "(run 'launchctl list | grep undeployedcapital' to check)"
 echo ""
 echo "Daily workflow:"
-echo "  1. Morning: python3 $WORKING_DIR/kite_login.py  (refresh Kite token)"
-echo "  2. 4:30 PM IST: LaunchAgent auto-runs run_daily.py"
+echo "  1. Market morning:  python3 $WORKING_DIR/kite_login.py   (refresh Kite token, ~30s)"
+echo "  2. ${RUN_HOUR}:$(printf '%02d' $RUN_MIN) local:      LaunchAgent auto-runs publish.sh"
 echo ""
-echo "Test run now:  python3 $WORKING_DIR/run_daily.py --no-ai --force"
-echo "View logs:     tail -f $LOG_DIR/launchd.log"
-echo "Uninstall:     launchctl unload $PLIST_PATH && rm $PLIST_PATH"
+echo "Test the full chain now:  bash $WORKING_DIR/publish.sh"
+echo "View logs:                tail -f $LOG_DIR/launchd.log"
+echo "Uninstall:                launchctl unload $PLIST_PATH && rm $PLIST_PATH"
