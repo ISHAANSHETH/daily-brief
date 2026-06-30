@@ -24,5 +24,18 @@
       "Realty": -0.9,
       "Energy": 0.2
     }
+  },
+  {
+    "date": "2026-06-30",
+    "sectors": {
+      "Auto": -1.85,
+      "Bank": -0.32,
+      "FMCG": -1.26,
+      "IT": -2.73,
+      "Metal": 0.59,
+      "Pharma": 0.39,
+      "Realty": 0.4,
+      "Energy": 0.26
+    }
   }
 ]
