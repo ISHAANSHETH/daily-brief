@@ -47,6 +47,13 @@ elif [ -n "$NO_AI" ]; then
   python3 run_daily.py --no-ai
 fi
 
+# ── Step 1b: Morning Bulletin (separate add-on product) ─────────────────────
+# Reads the same brief_data.json; mirrors itself to docs/briefs and refreshes
+# the BULLETINS list on docs/index.html.
+echo ""
+echo "--- Morning Bulletin ---"
+python3 bulletin_generator.py $NO_AI || echo "(bulletin step skipped/failed — continuing)"
+
 # ── Step 2: Copy to docs/ ───────────────────────────────────────────────────
 if [ ! -f "$BRIEF_SRC" ]; then
   echo "✗ Brief not found at $BRIEF_SRC"

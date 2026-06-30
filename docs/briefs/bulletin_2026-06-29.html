@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undeployed Capital · Morning Bulletin — Monday, June 29, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:#0D0F14; --card:#161B22; --border:#21262D;
+            --accent:#58A6FF; --gold:#D29922; --text:#E6EDF3;
+            --text-dim:#7D8590; --neutral:#8B949E; --shadow:rgba(0,0,0,0.4);
+        }
+        [data-theme="light"] {
+            --bg:#F7F9FC; --card:#FFFFFF; --border:#E2E8F0; --accent:#2563EB; --gold:#B45309;
+            --text:#0F172A; --text-dim:#64748B; --neutral:#64748B; --shadow:rgba(15,23,42,0.08);
+        }
+        *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+        body { background:var(--bg); color:var(--text);
+            font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; font-size:15px;
+            line-height:1.65; max-width:720px; margin:0 auto; padding:24px 20px 70px;
+            transition:background .25s,color .25s; }
+        .topbar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:14px; }
+        .topbtn { background:var(--card); color:var(--text-dim); border:1px solid var(--border);
+            border-radius:7px; padding:7px 12px; font-size:12px; font-weight:500; cursor:pointer;
+            font-family:inherit; }
+        .topbtn:hover { color:var(--text); border-color:var(--accent); }
+        .wordmark { font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:700;
+            letter-spacing:-0.5px; }
+        .wordmark .dot { color:var(--accent); }
+        .kicker { font-family:'Space Grotesk',sans-serif; font-size:34px; font-weight:700;
+            letter-spacing:-1px; margin-top:10px; }
+        .kicker .am { color:var(--gold); }
+        .subtitle { font-size:12px; color:var(--text-dim); margin-top:6px; display:flex; gap:10px;
+            flex-wrap:wrap; }
+        .divider { height:1px; background:var(--border); margin:22px 0 8px; }
+        .story { display:flex; gap:16px; padding:22px 0; border-bottom:1px solid var(--border); }
+        .story:last-of-type { border-bottom:none; }
+        .story-num { font-size:22px; line-height:1.2; flex-shrink:0; width:34px; text-align:center; }
+        .story-body { flex:1; min-width:0; }
+        .story-body h2 { font-family:'Space Grotesk',sans-serif; font-size:20px; font-weight:700;
+            letter-spacing:-0.3px; margin-bottom:8px; line-height:1.25; }
+        .story-body p { color:var(--text); margin-bottom:8px; }
+        .story-src { font-size:11px; text-transform:uppercase; letter-spacing:0.5px;
+            color:var(--text-dim); font-weight:600; }
+        .empty { color:var(--text-dim); padding:30px 0; }
+        .footer { margin-top:34px; padding-top:18px; border-top:1px solid var(--border);
+            font-size:12px; color:var(--text-dim); line-height:1.6; }
+        .footer a { color:var(--accent); text-decoration:none; }
+        @media (max-width:600px) {
+            .kicker { font-size:27px; }
+            .story { gap:12px; }
+            .story-num { width:26px; font-size:18px; }
+            .story-body h2 { font-size:18px; }
+        }
+        @media print {
+            body { background:#fff!important; color:#000!important; }
+            .topbar { display:none!important; }
+            .story { break-inside:avoid; }
+            a { color:#000!important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <button class="topbtn" onclick="window.print()">⬇ PDF</button>
+        <button class="topbtn" id="themeToggle" onclick="toggleTheme()">🌙 Theme</button>
+        <a class="topbtn" href="../index.html" style="text-decoration:none">← All issues</a>
+    </div>
+
+    <div class="wordmark">Undeployed Capital<span class="dot">.</span></div>
+    <div class="kicker"><span class="am">Morning</span> Bulletin</div>
+    <div class="subtitle">
+        <span>Monday, June 29, 2026</span><span>·</span>
+        <span>Compiled 04:56 PM IST</span><span>·</span>
+        <span>6 stories</span>
+    </div>
+    <div class="divider"></div>
+
+        <article class="story">
+            <div class="story-num">1️⃣</div>
+            <div class="story-body">
+                <h2>Zerodha Eyes Investment Banking Licence</h2>
+                <p>Zerodha has applied to SEBI for a Category I merchant banking licence, marking its first formal move into investment banking. The application comes against the backdrop of India's strong IPO pipeline and expanding capital markets activity. If approved, Zerodha would be able to advise on and manage public offerings, significantly broadening its financial services footprint beyond retail broking.</p>
+                <div class="story-src">ET Markets</div>
+            </div>
+        </article>
+        <article class="story">
+            <div class="story-num">2️⃣</div>
+            <div class="story-body">
+                <h2>Amazon Triggers $15 Billion Quick-Commerce Rout</h2>
+                <p>Shares of Eternal and Swiggy have suffered a combined $15 billion rout as Amazon and Flipkart ramp up their push into India's 10-minute delivery segment. Blinkit and Instamart, the quick-commerce arms of Eternal and Swiggy respectively, have seen their valuations squeezed sharply amid intensifying competitive pressure. The sell-off underscores how quickly incumbents can be repriced when deep-pocketed rivals enter a high-growth market.</p>
+                <div class="story-src">ET Markets</div>
+            </div>
+        </article>
+        <article class="story">
+            <div class="story-num">3️⃣</div>
+            <div class="story-body">
+                <h2>PayU Swings to $18M Ebitda Profit</h2>
+                <p>Prosus-owned fintech firm PayU swung to an $18 million full-year Ebitda profit in FY26, reversing a prior loss position. The turnaround was driven by a deliberate shift toward higher-margin products and ecosystem lending, while the company exited lower-value UPI categories. The result signals a maturing credit and payments business as PayU sharpens its focus on profitability over volume.</p>
+                <div class="story-src">Mint Companies</div>
+            </div>
+        </article>
+        <article class="story">
+            <div class="story-num">4️⃣</div>
+            <div class="story-body">
+                <h2>Persistent Plunges 11% on Nagarro Deal</h2>
+                <p>Persistent Systems' share price fell 11% after the IT company announced the acquisition of Munich-based Nagarro SE, its largest-ever deal, at an enterprise valuation of €1.27 billion. Investors appear concerned about the scale of the outlay and the execution risks associated with integrating a major European technology firm. The sharp reaction highlights the market's sensitivity to large cross-border acquisitions by Indian mid-cap IT players.</p>
+                <div class="story-src">Mint Markets</div>
+            </div>
+        </article>
+        <article class="story">
+            <div class="story-num">5️⃣</div>
+            <div class="story-body">
+                <h2>India Plans Informal-Economy Tracker for RBI</h2>
+                <p>India is developing a high-frequency index under MoSPI to track its vast informal economy, covering millions of unincorporated enterprises. The proposed index is designed to improve GDP estimates, guide RBI interest-rate decisions, and give corporates and investors a more accurate real-time read on economic activity. The initiative would address a longstanding blind spot in India's macroeconomic data architecture.</p>
+                <div class="story-src">ET Economy</div>
+            </div>
+        </article>
+        <article class="story">
+            <div class="story-num">6️⃣</div>
+            <div class="story-body">
+                <h2>GIP-Backed Pristine Logistics Files Confidential IPO</h2>
+                <p>Pristine Logistics, backed by Global Infrastructure Partners, has taken the confidential filing route for its upcoming IPO, appointing Axis, CLSA, and SBI as book-running managers. The listing fits a broader pattern of infrastructure asset monetisation in India, where the government's record ₹12.2 trillion capital expenditure budget is drawing sustained interest from global private equity. The confidential route allows the company to gauge investor appetite before committing to a public filing timeline.</p>
+                <div class="story-src">Mint Markets</div>
+            </div>
+        </article>
+
+    <footer class="footer">
+        <p><strong>Sources:</strong> ET Markets · Mint Companies · Mint Markets · ET Economy</p>
+        <p style="margin-top:8px">Disclaimer: This bulletin is for general information only and does
+           not constitute investment, legal or tax advice.</p>
+        <p style="margin-top:8px">Undeployed Capital · Published by Ishaan Sheth ·
+           <a href="../index.html">All issues →</a></p>
+    </footer>
+
+<script>
+(function(){ var s=localStorage.getItem('uc-theme'); if(s) document.documentElement.setAttribute('data-theme',s); upd(); })();
+function toggleTheme(){ var c=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
+    var n=c==='light'?'dark':'light'; document.documentElement.setAttribute('data-theme',n);
+    localStorage.setItem('uc-theme',n); upd(); }
+function upd(){ var b=document.getElementById('themeToggle'); if(!b) return;
+    b.innerHTML=document.documentElement.getAttribute('data-theme')==='light'?'☀ Theme':'🌙 Theme'; }
+</script>
+</body>
+</html>
