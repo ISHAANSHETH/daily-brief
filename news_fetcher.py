@@ -2,19 +2,14 @@
 """
 news_fetcher.py — Multi-source Indian financial news pipeline
 
-Fetches from 9 concurrent RSS sources, deduplicates, scores by relevance,
+Fetches from 14 concurrent RSS sources, deduplicates, scores by relevance,
 and builds structured context for Claude prompts.
 
 Sources:
-  1. Zerodha Pulse RSS
-  2. Mint Markets RSS
-  3. Mint Economy RSS
-  4. Mint Companies RSS
-  5. Economic Times Markets RSS
-  6. Economic Times Economy RSS
-  7. MoneyControl Top News RSS
-  8. SEBI RSS / Circulars
-  9. RBI Press Releases RSS
+  Direct RSS: Zerodha Pulse, Mint (Markets/Economy/Companies),
+              Economic Times (Markets/Economy/Industry/Tech), SEBI, RBI
+  Via Google News proxy (direct feeds blocked/stale): Business Standard,
+              MoneyControl, MoneyControl Pro, ET Prime
 
 Deduplication: 4+ consecutive word match between headlines.
 Scoring: Regulatory > Capital Flows > Market > Macro > General.
@@ -34,20 +29,39 @@ except ImportError:
 
 import requests
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; UndeployedCapital/1.0; +https://undeployedcapital.com)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"}
 FETCH_TIMEOUT = 12
-MAX_AGE_HOURS = 24
+MAX_AGE_HOURS = 48   # morning-bulletin window — last ~2 sessions of business news
+
+
+def _gnews(query: str) -> str:
+    """Google News RSS search URL (India edition). Reliable proxy for sites that
+    block datacenter IPs (Business Standard) or serve stale/empty direct RSS
+    (MoneyControl, ET Prime, MoneyControl Pro)."""
+    import urllib.parse
+    return ("https://news.google.com/rss/search?q="
+            + urllib.parse.quote(query)
+            + "&hl=en-IN&gl=IN&ceid=IN:en")
+
 
 NEWS_SOURCES = [
-    ("Zerodha Pulse",  "https://pulse.zerodha.com/feed"),
-    ("Mint Markets",   "https://www.livemint.com/rss/markets"),
-    ("Mint Economy",   "https://www.livemint.com/rss/economy"),
-    ("Mint Companies", "https://www.livemint.com/rss/companies"),
-    ("ET Markets",     "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms"),
-    ("ET Economy",     "https://economictimes.indiatimes.com/economy/rssfeeds/1373380680.cms"),
-    ("MoneyControl",   "https://www.moneycontrol.com/rss/MCtopnews.xml"),
-    ("SEBI",           "https://www.sebi.gov.in/rss/sebi.xml"),
-    ("RBI",            "https://www.rbi.org.in/rss/PressReleases.xml"),
+    # ── Direct publisher RSS (work fine) ──
+    ("Zerodha Pulse",     "https://pulse.zerodha.com/feed"),
+    ("Mint Markets",      "https://www.livemint.com/rss/markets"),
+    ("Mint Economy",      "https://www.livemint.com/rss/economy"),
+    ("Mint Companies",    "https://www.livemint.com/rss/companies"),
+    ("ET Markets",        "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms"),
+    ("ET Economy",        "https://economictimes.indiatimes.com/economy/rssfeeds/1373380680.cms"),
+    ("ET Industry",       "https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms"),
+    ("ET Tech",           "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms"),
+    ("SEBI",              "https://www.sebi.gov.in/rss/sebi.xml"),
+    ("RBI",               "https://www.rbi.org.in/rss/PressReleases.xml"),
+    # ── Via Google News proxy (direct feeds blocked/dead) ──
+    ("Business Standard", _gnews("site:business-standard.com when:2d")),
+    ("MoneyControl",      _gnews("site:moneycontrol.com when:2d")),
+    ("MoneyControl Pro",  _gnews("site:moneycontrol.com/news/business when:2d")),
+    ("ET Prime",          _gnews("site:economictimes.indiatimes.com/prime when:3d")),
 ]
 
 # ─────────────────────────────────────────────
@@ -146,8 +160,13 @@ def _fetch_rss_source(source_name: str, url: str) -> List[dict]:
         now = datetime.now(timezone.utc)
         cutoff = now - timedelta(hours=MAX_AGE_HOURS)
 
+        is_gnews = "news.google.com" in url
+
         for entry in feed.entries[:25]:
             title = entry.get("title", "").strip()
+            # Google News appends " - Publisher" to every title — strip it.
+            if is_gnews and " - " in title:
+                title = title.rsplit(" - ", 1)[0].strip()
             if not title or len(title) < 20:
                 continue
 
