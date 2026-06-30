@@ -37,6 +37,15 @@ echo "=== Undeployed Capital — Publish ==="
 echo "Date: $TODAY"
 echo ""
 
+# ── Step 0: Refresh Kite token via Keychain TOTP (best-effort) ──────────────
+# If Keychain secrets are set up, this makes the run fully hands-off (full
+# Kite data). If not configured / it fails, we continue on yfinance fallback.
+if [ -z "$SKIP_FETCH" ]; then
+  echo "--- Kite token (auto) ---"
+  python3 kite_auto_login.py || echo "(Kite auto-login unavailable — continuing on yfinance fallback)"
+  echo ""
+fi
+
 if [ -z "$SKIP_FETCH" ] && [ -z "$NO_AI" ]; then
   python3 run_daily.py
 elif [ -n "$SKIP_FETCH" ] && [ -n "$NO_AI" ]; then
